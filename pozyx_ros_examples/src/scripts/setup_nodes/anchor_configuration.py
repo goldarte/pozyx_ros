@@ -11,23 +11,30 @@ Automatic calibration at this point in time is highly discouraged.
 
 import pypozyx
 import rospy
+import argparse
+
+from pypozyx import (POZYX_POS_ALG_UWB_ONLY, POZYX_3D, Coordinates, POZYX_SUCCESS, PozyxConstants, version,
+                     DeviceCoordinates, PozyxSerial, get_first_pozyx_serial_port, SingleRegister, DeviceList, PozyxRegisters)
+
+# Set serial port or leave it empty to make auto connect
+serial_port = ''
 
 # adding None will cause the local device to be configured for the anchors as well.
-tag_ids = [None, 0x0001, 0x0002, 0x0003, 0x0004]
+tag_ids = [None]
 
-anchors = [pypozyx.DeviceCoordinates(0x0001, 1, pypozyx.Coordinates(0, 0, 1000)),
-           pypozyx.DeviceCoordinates(0x0002, 1, pypozyx.Coordinates(5000, 0, 1000)),
-           pypozyx.DeviceCoordinates(0x0003, 1, pypozyx.Coordinates(0, 5000, 1000)),
-           pypozyx.DeviceCoordinates(0x0004, 1, pypozyx.Coordinates(5000, 5000, 1000))]
+anchors = [DeviceCoordinates(0x6a11, 1, Coordinates(-155, 12210, 1500)),
+            DeviceCoordinates(0x6a19, 1, Coordinates(5170, 11572, 2900)),
+            DeviceCoordinates(0x6a6b, 1, Coordinates(0, 0, 2900)),
+            DeviceCoordinates(0x676d, 1, Coordinates(4330, 0, 2900))]
 
 
-def set_anchor_configuration():
+def set_anchor_configuration(port):
     rospy.init_node('uwb_configurator')
     rospy.loginfo("Configuring device list.")
 
     settings_registers = [0x16, 0x17]  # POS ALG and NUM ANCHORS
     try:
-        pozyx = pypozyx.PozyxSerial(pypozyx.get_serial_ports()[0].device)
+        pozyx = pypozyx.PozyxSerial(port)
     except:
         rospy.loginfo("Pozyx not connected")
         return
@@ -47,4 +54,21 @@ def set_anchor_configuration():
 
 
 if __name__ == '__main__':
-    set_anchor_configuration()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--port", type=str,
+                        help="sets the uart port of pozyx, use first pozyx device if empty")
+    args = parser.parse_args()
+
+    if args.port:
+        serial_port = args.port
+
+    # shortcut to not have to find out the port yourself
+    if serial_port == '':
+        serial_port = get_first_pozyx_serial_port()
+        print(serial_port)
+        if serial_port is None:
+            print("No Pozyx connected. Check your USB cable or your driver!")
+            quit()
+
+    set_anchor_configuration(serial_port)
