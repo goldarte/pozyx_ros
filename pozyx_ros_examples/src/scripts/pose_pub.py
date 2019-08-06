@@ -11,7 +11,7 @@ data comes from integers. Suggestions to replace this are quite welcomed.
 
 import pypozyx
 import rospy
-from geometry_msgs.msg import Point, Pose, Quaternion
+from geometry_msgs.msg import Point, PoseStamped, Quaternion
 import argparse
 
 remote_id = None
@@ -22,7 +22,7 @@ serial_port = ''
 enable_logging = False
 
 def pozyx_pose_pub(port):
-    pub = rospy.Publisher('pozyx_pose', Pose, queue_size=40)
+    pub = rospy.Publisher('pozyx_pose', PoseStamped, queue_size=40)
     rospy.init_node('pozyx_pose_node')
     try:
         pozyx = pypozyx.PozyxSerial(port)
@@ -32,13 +32,17 @@ def pozyx_pose_pub(port):
     while not rospy.is_shutdown():
         coords = pypozyx.Coordinates()
         quat = pypozyx.Quaternion()
+        pose = PoseStamped()
+        pose.header.frame_id = "map"
         status = pozyx.doPositioning(coords, pypozyx.POZYX_3D, remote_id=remote_id)
         if status == pypozyx.POZYX_SUCCESS:
             pozyx.getQuaternion(quat, remote_id=remote_id)
+            pose.pose.position = Point(coords.x, coords.y, coords.z)
+            pose.pose.orientation = Quaternion(quat.x, quat.y, quat.z, quat.w)
+            pose.header.stamp = rospy.Time.now()
+            pub.publish(pose)
             if enable_logging:
                 rospy.loginfo("POS: %s, QUAT: %s" % (str(coords), str(quat)))
-            pub.publish(Point(coords.x, coords.y, coords.z),
-                    Quaternion(quat.x, quat.y, quat.z, quat.w))
 
 
 if __name__ == '__main__':
