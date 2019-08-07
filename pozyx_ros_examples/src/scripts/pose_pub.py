@@ -37,7 +37,7 @@ def pozyx_pose_pub(port):
         status = pozyx.doPositioning(coords, pypozyx.POZYX_3D, remote_id=remote_id)
         if status == pypozyx.POZYX_SUCCESS:
             pozyx.getQuaternion(quat, remote_id=remote_id)
-            pose.pose.position = Point(coords.x, coords.y, coords.z)
+            pose.pose.position = Point(coords.x/1000., coords.y/1000., coords.z/1000.)
             pose.pose.orientation = Quaternion(quat.x, quat.y, quat.z, quat.w)
             pose.header.stamp = rospy.Time.now()
             pub.publish(pose)
